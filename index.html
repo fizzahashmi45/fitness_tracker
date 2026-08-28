@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pulse — Fitness Tracker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#12151A;
+    --surface:#1B1F27;
+    --surface-2:#20242E;
+    --line:#2A2F3A;
+    --lime:#C6F135;
+    --coral:#FF6B4A;
+    --sky:#5AC8FA;
+    --text:#E9ECF1;
+    --muted:#7C8494;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  html,body{background:var(--bg); color:var(--text); font-family:'Inter',sans-serif; min-height:100vh;}
+  .mono{font-family:'IBM Plex Mono',monospace;}
+  .display{font-family:'Archivo Black',sans-serif; letter-spacing:-0.01em;}
+
+  #app{max-width:920px; margin:0 auto; padding:28px 20px 80px;}
+
+  header.top{display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:28px; flex-wrap:wrap; gap:12px;}
+  header.top .brand{display:flex; align-items:center; gap:10px;}
+  header.top .brand .dot{width:14px; height:14px; border-radius:50%; background:var(--lime); box-shadow:0 0 14px var(--lime);}
+  header.top h1{font-size:22px; text-transform:uppercase;}
+  header.top .date{color:var(--muted); font-size:13px;}
+
+  nav.tabs{display:flex; gap:6px; background:var(--surface); padding:5px; border-radius:12px; border:1px solid var(--line);}
+  nav.tabs button{flex:1; background:transparent; border:none; color:var(--muted); font-family:inherit; font-weight:600; font-size:13px; padding:9px 14px; border-radius:9px; cursor:pointer; transition:all .15s;}
+  nav.tabs button.active{background:var(--lime); color:#12151A;}
+  nav.tabs button:not(.active):hover{color:var(--text);}
+
+  .panel{margin-top:22px;}
+  .hidden{display:none !important;}
+
+  /* Rings */
+  .rings{display:grid; grid-template-columns:repeat(3,1fr); gap:16px; margin-bottom:20px;}
+  .ring-card{background:var(--surface); border:1px solid var(--line); border-radius:16px; padding:18px; display:flex; flex-direction:column; align-items:center; gap:10px;}
+  .ring-card svg{transform:rotate(-90deg);}
+  .ring-card .ring-bg{fill:none; stroke:var(--surface-2); stroke-width:10;}
+  .ring-card .ring-fg{fill:none; stroke-width:10; stroke-linecap:round; transition:stroke-dashoffset 1s cubic-bezier(.4,0,.2,1);}
+  .ring-wrap{position:relative; width:112px; height:112px;}
+  .ring-label{position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center;}
+  .ring-label .val{font-family:'IBM Plex Mono',monospace; font-weight:600; font-size:18px;}
+  .ring-label .unit{font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:.05em;}
+  .ring-card .cap{font-size:12px; text-transform:uppercase; letter-spacing:.08em; color:var(--muted); font-weight:600;}
+  .ring-card .goal-txt{font-size:11px; color:var(--muted);}
+
+  /* Weekly chart */
+  .card{background:var(--surface); border:1px solid var(--line); border-radius:16px; padding:20px;}
+  .card + .card{margin-top:16px;}
+  .card h2{font-size:13px; text-transform:uppercase; letter-spacing:.08em; color:var(--muted); margin-bottom:16px;}
+  .chart{display:flex; align-items:flex-end; gap:10px; height:140px;}
+  .chart .col{flex:1; display:flex; flex-direction:column; align-items:center; gap:8px; height:100%; justify-content:flex-end;}
+  .chart .bar{width:100%; max-width:34px; border-radius:6px 6px 3px 3px; background:linear-gradient(180deg,var(--lime),#8FCB1F); min-height:3px; transition:height .6s ease;}
+  .chart .col.today .bar{background:linear-gradient(180deg,var(--coral),#D6502F);}
+  .chart .lbl{font-size:11px; color:var(--muted);}
+  .chart .col.today .lbl{color:var(--text); font-weight:600;}
+
+  /* Log list */
+  .entry{display:flex; align-items:center; gap:12px; padding:12px 0; border-bottom:1px solid var(--line);}
+  .entry:last-child{border-bottom:none;}
+  .entry .icon{width:38px; height:38px; border-radius:10px; background:var(--surface-2); display:flex; align-items:center; justify-content:center; font-size:17px; flex-shrink:0;}
+  .entry .meta{flex:1; min-width:0;}
+  .entry .meta .t{font-weight:600; font-size:14px;}
+  .entry .meta .s{font-size:12px; color:var(--muted);}
+  .entry .stat{font-family:'IBM Plex Mono',monospace; font-size:13px; color:var(--lime); text-align:right;}
+  .entry .del{background:none; border:none; color:var(--muted); cursor:pointer; font-size:16px; padding:4px 8px;}
+  .entry .del:hover{color:var(--coral);}
+  .empty{color:var(--muted); font-size:13px; padding:20px 0; text-align:center;}
+
+  /* Form */
+  form.log{display:grid; grid-template-columns:1fr 1fr; gap:12px;}
+  form.log .full{grid-column:1/-1;}
+  label{display:block; font-size:11px; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); margin-bottom:6px; font-weight:600;}
+  select,input,textarea{width:100%; background:var(--surface-2); border:1px solid var(--line); border-radius:999px; padding:11px 16px; color:var(--text); font-family:'Inter',sans-serif; font-size:14px;}
+  textarea{border-radius:12px;}
+  select:focus,input:focus,textarea:focus{outline:2px solid var(--lime); outline-offset:1px; border-color:var(--lime);}
+  textarea{resize:vertical; min-height:60px;}
+  button.submit{grid-column:1/-1; background:var(--lime); color:#12151A; border:none; padding:13px; border-radius:999px; font-weight:700; font-size:14px; cursor:pointer; margin-top:4px;}
+  button.submit:hover{background:#d8fd52;}
+  button.submit:active{transform:scale(.99);}
+
+  .goals-grid{display:grid; grid-template-columns:repeat(3,1fr); gap:12px;}
+  .save-goals{background:var(--coral); color:#12151A; border:none; padding:12px; border-radius:999px; font-weight:700; font-size:14px; cursor:pointer; margin-top:16px; width:100%;}
+
+  footer{text-align:center; color:var(--muted); font-size:11px; margin-top:36px;}
+
+  @media(max-width:520px){
+    .rings{grid-template-columns:1fr; }
+    form.log{grid-template-columns:1fr;}
+    .goals-grid{grid-template-columns:1fr;}
+  }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <header class="top">
+    <div class="brand">
+      <div class="dot"></div>
+      <div>
+        <h1 class="display">PULSE</h1>
+        <div class="date" id="todayLabel"></div>
+      </div>
+    </div>
+    <nav class="tabs">
+      <button data-tab="dashboard" class="active">Dashboard</button>
+      <button data-tab="log">Log Activity</button>
+      <button data-tab="goals">Goals</button>
+    </nav>
+  </header>
+
+  <!-- DASHBOARD -->
+  <section class="panel" id="tab-dashboard">
+    <div class="rings">
+      <div class="ring-card">
+        <div class="ring-wrap">
+          <svg width="112" height="112" viewBox="0 0 112 112">
+            <circle class="ring-bg" cx="56" cy="56" r="48"></circle>
+            <circle class="ring-fg" id="ringSteps" cx="56" cy="56" r="48" stroke="#C6F135" stroke-dasharray="301.6" stroke-dashoffset="301.6"></circle>
+          </svg>
+          <div class="ring-label"><span class="val mono" id="valSteps">0</span><span class="unit">steps</span></div>
+        </div>
+        <div class="cap">Steps</div>
+        <div class="goal-txt" id="goalStepsTxt">Goal: 0</div>
+      </div>
+      <div class="ring-card">
+        <div class="ring-wrap">
+          <svg width="112" height="112" viewBox="0 0 112 112">
+            <circle class="ring-bg" cx="56" cy="56" r="48"></circle>
+            <circle class="ring-fg" id="ringCal" cx="56" cy="56" r="48" stroke="#FF6B4A" stroke-dasharray="301.6" stroke-dashoffset="301.6"></circle>
+          </svg>
+          <div class="ring-label"><span class="val mono" id="valCal">0</span><span class="unit">kcal</span></div>
+        </div>
+        <div class="cap">Calories</div>
+        <div class="goal-txt" id="goalCalTxt">Goal: 0</div>
+      </div>
+      <div class="ring-card">
+        <div class="ring-wrap">
+          <svg width="112" height="112" viewBox="0 0 112 112">
+            <circle class="ring-bg" cx="56" cy="56" r="48"></circle>
+            <circle class="ring-fg" id="ringMin" cx="56" cy="56" r="48" stroke="#5AC8FA" stroke-dasharray="301.6" stroke-dashoffset="301.6"></circle>
+          </svg>
+          <div class="ring-label"><span class="val mono" id="valMin">0</span><span class="unit">min</span></div>
+        </div>
+        <div class="cap">Active</div>
+        <div class="goal-txt" id="goalMinTxt">Goal: 0</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Last 7 Days · Calories Burned</h2>
+      <div class="chart" id="weekChart"></div>
+    </div>
+
+    <div class="card">
+      <h2>Recent Activity</h2>
+      <div id="recentList"></div>
+    </div>
+  </section>
+
+  <!-- LOG -->
+  <section class="panel hidden" id="tab-log">
+    <div class="card">
+      <h2>Log a New Entry</h2>
+      <form class="log" id="logForm">
+        <div>
+          <label>Activity Type</label>
+          <select id="fType">
+            <option value="Steps">Steps</option>
+            <option value="Running">Running</option>
+            <option value="Walking">Walking</option>
+            <option value="Cycling">Cycling</option>
+            <option value="Strength Training">Strength Training</option>
+            <option value="Yoga">Yoga</option>
+            <option value="Swimming">Swimming</option>
+            <option value="Other">Other</option>
+          </select>
+        </div>
+        <div>
+          <label>Date</label>
+          <input type="date" id="fDate">
+        </div>
+        <div id="stepsField">
+          <label>Step Count</label>
+          <input type="number" id="fSteps" min="0" placeholder="e.g. 6500">
+        </div>
+        <div id="durationField">
+          <label>Duration (min)</label>
+          <input type="number" id="fDuration" min="0" placeholder="e.g. 30">
+        </div>
+        <div class="full">
+          <label>Calories Burned</label>
+          <input type="number" id="fCalories" min="0" placeholder="e.g. 250">
+        </div>
+        <div class="full">
+          <label>Notes (optional)</label>
+          <textarea id="fNotes" placeholder="How did it feel?"></textarea>
+        </div>
+        <button type="submit" class="submit">Save Entry</button>
+      </form>
+    </div>
+
+    <div class="card">
+      <h2>All Entries</h2>
+      <div id="allList"></div>
+    </div>
+  </section>
+
+  <!-- GOALS -->
+  <section class="panel hidden" id="tab-goals">
+    <div class="card">
+      <h2>Daily Goals</h2>
+      <div class="goals-grid">
+        <div>
+          <label>Steps Goal</label>
+          <input type="number" id="gSteps" min="0">
+        </div>
+        <div>
+          <label>Calories Goal</label>
+          <input type="number" id="gCal" min="0">
+        </div>
+        <div>
+          <label>Active Minutes Goal</label>
+          <input type="number" id="gMin" min="0">
+        </div>
+      </div>
+      <button class="save-goals" id="saveGoalsBtn">Save Goals</button>
+    </div>
+  </section>
+
+  <footer>Your data is saved to this device only.</footer>
+</div>
+
+<script>
+(function(){
+  const ICONS = {
+    "Steps":"👟","Running":"🏃","Walking":"🚶","Cycling":"🚴",
+    "Strength Training":"🏋️","Yoga":"🧘","Swimming":"🏊","Other":"⚡"
+  };
+  const RING_CIRC = 301.6;
+  let entries = [];
+  let goals = { steps: 8000, calories: 500, minutes: 45 };
+
+  const todayStr = () => new Date().toISOString().slice(0,10);
+  const fmtDate = (d) => new Date(d+"T00:00:00").toLocaleDateString(undefined,{weekday:'short', month:'short', day:'numeric'});
+
+  document.getElementById('todayLabel').textContent = new Date().toLocaleDateString(undefined,{weekday:'long', year:'numeric', month:'long', day:'numeric'});
+  document.getElementById('fDate').value = todayStr();
+
+  // ---- Storage Fix (localStorage) ----
+  function loadData(){
+    try{
+      const r = localStorage.getItem('fitness:entries');
+      entries = r ? JSON.parse(r) : [];
+    }catch(e){ entries = []; }
+    try{
+      const r2 = localStorage.getItem('fitness:goals');
+      if(r2) goals = JSON.parse(r2);
+    }catch(e){ /* keep defaults */ }
+  }
+  function saveEntries(){
+    try{ localStorage.setItem('fitness:entries', JSON.stringify(entries)); }
+    catch(e){ console.error('save failed', e); }
+  }
+  function saveGoals(){
+    try{ localStorage.setItem('fitness:goals', JSON.stringify(goals)); }
+    catch(e){ console.error('save failed', e); }
+  }
+
+  // ---- Tabs ----
+  document.querySelectorAll('nav.tabs button').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      document.querySelectorAll('nav.tabs button').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      document.querySelectorAll('.panel').forEach(p=>p.classList.add('hidden'));
+      document.getElementById('tab-'+btn.dataset.tab).classList.remove('hidden');
+    });
+  });
+
+  // ---- Form field toggling ----
+  const fType = document.getElementById('fType');
+  function toggleFields(){
+    const isSteps = fType.value === 'Steps';
+    document.getElementById('stepsField').style.display = isSteps ? '' : 'none';
+    document.getElementById('durationField').style.display = isSteps ? 'none' : '';
+  }
+  fType.addEventListener('change', toggleFields);
+  toggleFields();
+
+  // ---- Submit entry ----
+  document.getElementById('logForm').addEventListener('submit', (e)=>{
+    e.preventDefault();
+    const type = fType.value;
+    const date = document.getElementById('fDate').value || todayStr();
+    const steps = parseInt(document.getElementById('fSteps').value) || 0;
+    const duration = parseInt(document.getElementById('fDuration').value) || 0;
+    const calories = parseInt(document.getElementById('fCalories').value) || 0;
+    const notes = document.getElementById('fNotes').value.trim();
+
+    entries.unshift({
+      id: Date.now().toString(36)+Math.random().toString(36).slice(2,6),
+      type, date, steps, duration, calories, notes
+    });
+    saveEntries();
+    e.target.reset();
+    document.getElementById('fDate').value = todayStr();
+    toggleFields();
+    render();
+  });
+
+  function deleteEntry(id){
+    entries = entries.filter(x=>x.id!==id);
+    saveEntries();
+    render();
+  }
+
+  // ---- Goals ----
+  document.getElementById('saveGoalsBtn').addEventListener('click', ()=>{
+    goals.steps = parseInt(document.getElementById('gSteps').value) || 0;
+    goals.calories = parseInt(document.getElementById('gCal').value) || 0;
+    goals.minutes = parseInt(document.getElementById('gMin').value) || 0;
+    saveGoals();
+    render();
+  });
+
+  // ---- Rendering ----
+  function setRing(el, valEl, pct, val){
+    const offset = RING_CIRC - Math.min(pct,1) * RING_CIRC;
+    el.style.strokeDashoffset = offset;
+    valEl.textContent = val;
+  }
+
+  function renderEntryRow(en, showDate){
+    const div = document.createElement('div');
+    div.className = 'entry';
+    const statText = en.type === 'Steps' ? (en.steps+' steps') : (en.duration+' min');
+    div.innerHTML = `
+      <div class="icon">${ICONS[en.type]||'⚡'}</div>
+      <div class="meta">
+        <div class="t">${en.type}</div>
+        <div class="s">${showDate ? fmtDate(en.date) : ''}${en.notes ? (showDate?' · ':'')+en.notes : ''}</div>
+      </div>
+      <div class="stat">${statText}<br>${en.calories} kcal</div>
+      <button class="del" title="Delete">✕</button>
+    `;
+    div.querySelector('.del').addEventListener('click', ()=>deleteEntry(en.id));
+    return div;
+  }
+
+  function render(){
+    const today = todayStr();
+    const todays = entries.filter(e=>e.date===today);
+    const totSteps = todays.reduce((s,e)=>s+(e.steps||0),0);
+    const totCal = todays.reduce((s,e)=>s+(e.calories||0),0);
+    const totMin = todays.reduce((s,e)=>s+(e.duration||0),0);
+
+    setRing(document.getElementById('ringSteps'), document.getElementById('valSteps'), goals.steps? totSteps/goals.steps:0, totSteps.toLocaleString());
+    setRing(document.getElementById('ringCal'), document.getElementById('valCal'), goals.calories? totCal/goals.calories:0, totCal);
+    setRing(document.getElementById('ringMin'), document.getElementById('valMin'), goals.minutes? totMin/goals.minutes:0, totMin);
+    document.getElementById('goalStepsTxt').textContent = 'Goal: '+goals.steps.toLocaleString();
+    document.getElementById('goalCalTxt').textContent = 'Goal: '+goals.calories;
+    document.getElementById('goalMinTxt').textContent = 'Goal: '+goals.minutes;
+
+    document.getElementById('gSteps').value = goals.steps;
+    document.getElementById('gCal').value = goals.calories;
+    document.getElementById('gMin').value = goals.minutes;
+
+    // weekly chart
+    const chart = document.getElementById('weekChart');
+    chart.innerHTML = '';
+    const days = [];
+    for(let i=6;i>=0;i--){
+      const d = new Date();
+      d.setDate(d.getDate()-i);
+      days.push(d.toISOString().slice(0,10));
+    }
+    const dayTotals = days.map(d=> entries.filter(e=>e.date===d).reduce((s,e)=>s+(e.calories||0),0));
+    const max = Math.max(...dayTotals, 50);
+    days.forEach((d,i)=>{
+      const col = document.createElement('div');
+      col.className = 'col'+(d===today?' today':'');
+      const barH = Math.round((dayTotals[i]/max)*100);
+      col.innerHTML = `<div class="bar" style="height:${barH}%"></div><div class="lbl">${new Date(d+"T00:00:00").toLocaleDateString(undefined,{weekday:'short'})[0]}</div>`;
+      chart.appendChild(col);
+    });
+
+    // recent (dashboard, top 5)
+    const recentList = document.getElementById('recentList');
+    recentList.innerHTML = '';
+    if(entries.length===0){
+      recentList.innerHTML = '<div class="empty">No activity logged yet. Head to "Log Activity" to add your first entry.</div>';
+    } else {
+      entries.slice(0,5).forEach(en=> recentList.appendChild(renderEntryRow(en, true)));
+    }
+
+    // all entries list
+    const allList = document.getElementById('allList');
+    allList.innerHTML = '';
+    if(entries.length===0){
+      allList.innerHTML = '<div class="empty">No entries yet.</div>';
+    } else {
+      entries.forEach(en=> allList.appendChild(renderEntryRow(en, true)));
+    }
+  }
+
+  function init(){
+    loadData();
+    render();
+  }
+
+  init();
+})();
+</script>
+</body>
+</html>
